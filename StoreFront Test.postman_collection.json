@@ -1,0 +1,1247 @@
+{
+	"info": {
+		"_postman_id": "620f1ffc-690e-46c4-b8ef-05a853288924",
+		"name": "StoreFront Test",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "9931735"
+	},
+	"item": [
+		{
+			"name": "WebProxy: Initial Request",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Successful GET request\", function () {\r",
+							"    pm.expect(pm.response.code).to.be.oneOf([200]);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"X-Citrix-Application\", function () {\r",
+							"    pm.response.to.have.header(\"X-Citrix-Application\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Body matches string\", function () {\r",
+							"    pm.expect(pm.response.text()).to.include(\"<html _manifest=\\\"receiver.appcache\\\">\");\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{BaseUrl}}",
+					"host": [
+						"{{BaseUrl}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "WebProxy: Home Configuration",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"HomeConfiguration detected\", function () {\r",
+							"    pm.expect(pm.response.text()).to.include(\"<clientSettings xmlns='http://citrix.com/delivery-services/webAPI/2-6/clientConfig'>\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"X-Citrix-Application\", function () {\r",
+							"    pm.response.to.have.header(\"X-Citrix-Application\");\r",
+							"});\r",
+							"\r",
+							"pm.response.headers\r",
+							".filter(header=>header.key.includes(\"Set-Cookie\"))\r",
+							".map(f => pm.collectionVariables.set(f.value.split(\"=\")[0], f.value.split(\";\")[0].split(\"=\")[1]));\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Citrix-IsUsingHTTPS",
+						"value": "no",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{BaseUrl}}Home/Configuration",
+					"host": [
+						"{{BaseUrl}}Home"
+					],
+					"path": [
+						"Configuration"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "WebProxy: Get Detection Ticket",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"X-Citrix-Application present\", function () {\r",
+							"    pm.response.to.have.header(\"X-Citrix-Application\");\r",
+							"});\r",
+							"\r",
+							"let ticket = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Client detection ticket id present\", function () {\r",
+							"    pm.expect(ticket.clientDetectionTicket).to.not.null;\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Client detection ticket postback correct\", function () {\r",
+							"    let domain = pm.request.url.host.join('.');\r",
+							"    pm.expect(ticket.postbackUrl).is.equals('http://' + domain + '/Citrix/Store/clientAssistant/reportDetectionStatus');\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Client detection ticket success\", function () {\r",
+							"    pm.expect(ticket.status).is.equals('Success');\r",
+							"});\r",
+							"\r",
+							"pm.environment.set('CDT', ticket.clientDetectionTicket);\r",
+							"pm.environment.set('CDTPostback', ticket.postbackUrl);\r",
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "ASP.NET_SessionId={{ASP.NET_SessionId}}; CsrfToken={{CsrfToken}}",
+						"type": "text"
+					},
+					{
+						"key": "Csrf-Token",
+						"value": "{{CsrfToken}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Citrix-IsUsingHTTPS",
+						"value": "No",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{BaseUrl}}ClientAssistant/GetDetectionTicket",
+					"host": [
+						"{{BaseUrl}}ClientAssistant"
+					],
+					"path": [
+						"GetDetectionTicket"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "WebProxy: Get Detection Status",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"X-Citrix-Application\", function () {\r",
+							"    pm.response.to.have.header(\"X-Citrix-Application\");\r",
+							"});\r",
+							"\r",
+							"let ticket = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Client detection waiting\", function () {\r",
+							"    pm.expect(ticket.status).is.equal(\"Waiting\");\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "ASP.NET_SessionId={{ASP.NET_SessionId}}; CsrfToken={{CsrfToken}}",
+						"type": "text"
+					},
+					{
+						"key": "Csrf-Token",
+						"value": "{{CsrfToken}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Citrix-IsUsingHTTPS",
+						"value": "No",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "ticket",
+							"value": "{{CDT}}",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{BaseUrl}}ClientAssistant/GetDetectionStatus",
+					"host": [
+						"{{BaseUrl}}ClientAssistant"
+					],
+					"path": [
+						"GetDetectionStatus"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "WebProxy: WebHelper Report Detection",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"let ticket = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Client detection report success\", function () {\r",
+							"    pm.expect(ticket.status).is.equal(\"Success\");\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "ASP.NET_SessionId={{ASP.NET_SessionId}}; CsrfToken={{CsrfToken}}",
+						"type": "text"
+					},
+					{
+						"key": "Csrf-Token",
+						"value": "{{CsrfToken}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Citrix-IsUsingHTTPS",
+						"value": "No",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "ticket",
+							"value": "{{CDT}}",
+							"type": "text"
+						},
+						{
+							"key": "protocolVersion",
+							"value": "1",
+							"type": "text"
+						},
+						{
+							"key": "hdxVersion",
+							"value": "23.2.0",
+							"type": "text"
+						},
+						{
+							"key": "hdxIsPassThrough",
+							"value": "False",
+							"type": "text"
+						},
+						{
+							"key": "hdxIsPassThroughVariable",
+							"value": "False",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{CDTPostback}}",
+					"host": [
+						"{{CDTPostback}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "WebProxy: Get Detection Status Complete",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"X-Citrix-Application\", function () {\r",
+							"    pm.response.to.have.header(\"X-Citrix-Application\");\r",
+							"});\r",
+							"\r",
+							"let ticket = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Client detection success\", function () {\r",
+							"    pm.expect(ticket.status).is.equal(\"Success\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"HDX passthrough reported\", function () {\r",
+							"    pm.expect(ticket.hdxIsPassThrough).is.equal(\"False\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"HDX passthrough variable\", function () {\r",
+							"    pm.expect(ticket.hdxIsPassThroughVariable).is.equal(\"False\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"HDX version\", function () {\r",
+							"    pm.expect(ticket.hdxVersion).is.equal(\"23.2.0\");\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "ASP.NET_SessionId={{ASP.NET_SessionId}}; CsrfToken={{CsrfToken}}",
+						"type": "text"
+					},
+					{
+						"key": "Csrf-Token",
+						"value": "{{CsrfToken}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Citrix-IsUsingHTTPS",
+						"value": "No",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "ticket",
+							"value": "{{CDT}}",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{BaseUrl}}ClientAssistant/GetDetectionStatus",
+					"host": [
+						"{{BaseUrl}}ClientAssistant"
+					],
+					"path": [
+						"GetDetectionStatus"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "WebProxy: Resources List (Unauthorized)",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"X-Citrix-Application\", function () {\r",
+							"    pm.response.to.have.header(\"X-Citrix-Application\");\r",
+							"});\r",
+							"\r",
+							"let payload = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Check unauthorzed\", function () {\r",
+							"    pm.expect(payload.unauthorized).is.true\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "ASP.NET_SessionId={{ASP.NET_SessionId}}; CsrfToken={{CsrfToken}}; CtxsClientDetectionDone=true; CtxsIsPassThrough=false; CtxsClientVersion=23.2.0.38; CtxsHasUpgradeBeenShown=true;",
+						"type": "text"
+					},
+					{
+						"key": "Csrf-Token",
+						"value": "{{CsrfToken}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Citrix-IsUsingHTTPS",
+						"value": "No",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "format",
+							"value": "json",
+							"type": "text"
+						},
+						{
+							"key": "resourceDetails",
+							"value": "Default",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{BaseUrl}}Resources/List",
+					"host": [
+						"{{BaseUrl}}Resources"
+					],
+					"path": [
+						"List"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "WebProxy: Get Authentication Methods",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"X-Citrix-Application\", function () {\r",
+							"    pm.response.to.have.header(\"X-Citrix-Application\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Explicit authentication\", function () {\r",
+							"    pm.expect(pm.response.text()).to.include(\"<method name=\\\"ExplicitForms\\\" url=\\\"ExplicitAuth/Login\\\"/>\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Citrix authentication\", function () {\r",
+							"    pm.expect(pm.response.text()).to.include(\"<method name=\\\"CitrixAuth\\\" url=\\\"CitrixAuth/Login\\\"/>\");\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "ASP.NET_SessionId={{ASP.NET_SessionId}}; CsrfToken={{CsrfToken}}; CtxsClientDetectionDone=true; CtxsIsPassThrough=false; CtxsClientVersion=23.2.0.38; CtxsHasUpgradeBeenShown=true;",
+						"type": "text"
+					},
+					{
+						"key": "Csrf-Token",
+						"value": "{{CsrfToken}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Citrix-IsUsingHTTPS",
+						"value": "No",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "format",
+							"value": "json",
+							"type": "text"
+						},
+						{
+							"key": "resourceDetails",
+							"value": "Default",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{BaseUrl}}Authentication/GetAuthMethods",
+					"host": [
+						"{{BaseUrl}}Authentication"
+					],
+					"path": [
+						"GetAuthMethods"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "WebProxy: Explicit Auth Login",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"X-Citrix-Application\", function () {\r",
+							"    pm.response.to.have.header(\"X-Citrix-Application\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Explicit form response\", function () {\r",
+							"    pm.expect(pm.response.text()).to.include(\"<Status>success</Status>\");\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "ASP.NET_SessionId={{ASP.NET_SessionId}}; CsrfToken={{CsrfToken}}; CtxsClientDetectionDone=true; CtxsIsPassThrough=false; CtxsClientVersion=23.2.0.38; CtxsHasUpgradeBeenShown=true;",
+						"type": "text"
+					},
+					{
+						"key": "Csrf-Token",
+						"value": "{{CsrfToken}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Citrix-IsUsingHTTPS",
+						"value": "No",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": []
+				},
+				"url": {
+					"raw": "{{BaseUrl}}ExplicitAuth/Login",
+					"host": [
+						"{{BaseUrl}}ExplicitAuth"
+					],
+					"path": [
+						"Login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "WebProxy: Explicit Auth Login Attempt",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"X-Citrix-Application\", function () {\r",
+							"    pm.response.to.have.header(\"X-Citrix-Application\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Login attempt success\", function () {\r",
+							"    pm.expect(pm.response.text()).to.include(\"<Result>success</Result>\");\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "ASP.NET_SessionId={{ASP.NET_SessionId}}; CsrfToken={{CsrfToken}}; CtxsClientDetectionDone=true; CtxsIsPassThrough=false; CtxsClientVersion=23.2.0.38; CtxsHasUpgradeBeenShown=true;",
+						"type": "text"
+					},
+					{
+						"key": "Csrf-Token",
+						"value": "{{CsrfToken}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Citrix-IsUsingHTTPS",
+						"value": "No",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "username",
+							"value": "{{Username}}",
+							"type": "text"
+						},
+						{
+							"key": "password",
+							"value": "{{Password}}",
+							"type": "text"
+						},
+						{
+							"key": "saveCredentials",
+							"value": "false",
+							"type": "text"
+						},
+						{
+							"key": "loginBtn",
+							"value": "Log+On",
+							"type": "text"
+						},
+						{
+							"key": "StateContext",
+							"value": "",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{BaseUrl}}ExplicitAuth/LoginAttempt",
+					"host": [
+						"{{BaseUrl}}ExplicitAuth"
+					],
+					"path": [
+						"LoginAttempt"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "WebProxy: Resources List enumeration",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"X-Citrix-Application\", function () {\r",
+							"    pm.response.to.have.header(\"X-Citrix-Application\");\r",
+							"});\r",
+							"\r",
+							"let payload = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Subscriptions are enabled\", function () {\r",
+							"    pm.expect(payload.isSubscriptionEnabled).is.true\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Is authenticated store\", function () {\r",
+							"    pm.expect(payload.resources.length).to.be.above(1);\r",
+							"});\r",
+							"\r",
+							"let desktop = payload.resources.find(item => item.isdesktop == true);\r",
+							"pm.environment.set('DesktopLaunchStatus', desktop.launchstatusurl);\r",
+							"pm.environment.set('SubscriptionUrl', desktop.subscriptionurl);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "ASP.NET_SessionId={{ASP.NET_SessionId}}; CsrfToken={{CsrfToken}}; CtxsClientDetectionDone=true; CtxsIsPassThrough=false; CtxsClientVersion=23.2.0.38; CtxsHasUpgradeBeenShown=true;",
+						"type": "text"
+					},
+					{
+						"key": "Csrf-Token",
+						"value": "{{CsrfToken}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Citrix-IsUsingHTTPS",
+						"value": "No",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "format",
+							"value": "json",
+							"type": "text"
+						},
+						{
+							"key": "resourceDetails",
+							"value": "Default",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{BaseUrl}}Resources/List",
+					"host": [
+						"{{BaseUrl}}Resources"
+					],
+					"path": [
+						"List"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "WebProxy: Subscribe",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"X-Citrix-Application\", function () {\r",
+							"    pm.response.to.have.header(\"X-Citrix-Application\");\r",
+							"});\r",
+							"\r",
+							"let payload = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Subscription subscribe successful\", function () {\r",
+							"    pm.expect(payload.status).is.equal('subscribed');\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "ASP.NET_SessionId={{ASP.NET_SessionId}}; CsrfToken={{CsrfToken}}; CtxsClientDetectionDone=true; CtxsIsPassThrough=false; CtxsClientVersion=23.2.0.38; CtxsHasUpgradeBeenShown=true;",
+						"type": "text"
+					},
+					{
+						"key": "Csrf-Token",
+						"value": "{{CsrfToken}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Citrix-IsUsingHTTPS",
+						"value": "No",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "operation",
+							"value": "subscribe",
+							"type": "text"
+						},
+						{
+							"key": "dazzle position",
+							"value": "1",
+							"type": "text"
+						},
+						{
+							"key": "position",
+							"value": "1",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{BaseUrl}}{{SubscriptionUrl}}",
+					"host": [
+						"{{BaseUrl}}{{SubscriptionUrl}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "WebProxy: Unsubscribe",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"X-Citrix-Application\", function () {\r",
+							"    pm.response.to.have.header(\"X-Citrix-Application\");\r",
+							"});\r",
+							"\r",
+							"let payload = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Subscription unsubscribe successful\", function () {\r",
+							"    pm.expect(payload.status).is.equal('unsubscribed');\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "ASP.NET_SessionId={{ASP.NET_SessionId}}; CsrfToken={{CsrfToken}}; CtxsClientDetectionDone=true; CtxsIsPassThrough=false; CtxsClientVersion=23.2.0.38; CtxsHasUpgradeBeenShown=true;",
+						"type": "text"
+					},
+					{
+						"key": "Csrf-Token",
+						"value": "{{CsrfToken}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Citrix-IsUsingHTTPS",
+						"value": "No",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "operation",
+							"value": "unsubscribe",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{BaseUrl}}{{SubscriptionUrl}}",
+					"host": [
+						"{{BaseUrl}}{{SubscriptionUrl}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "WebProxy: Get User name",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"X-Citrix-Application\", function () {\r",
+							"    pm.response.to.have.header(\"X-Citrix-Application\");\r",
+							"});\r",
+							"\r",
+							"let payload = pm.response.text\r",
+							"\r",
+							"pm.test(\"Get username success\", function () {\r",
+							"    pm.expect(pm.response.text()).is.equals(pm.variables.get(\"Domain\")+\"\\\\Administrator\");\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "ASP.NET_SessionId={{ASP.NET_SessionId}}; CsrfToken={{CsrfToken}}; CtxsClientDetectionDone=true; CtxsIsPassThrough=false; CtxsClientVersion=23.2.0.38; CtxsHasUpgradeBeenShown=true;",
+						"type": "text"
+					},
+					{
+						"key": "Csrf-Token",
+						"value": "{{CsrfToken}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Citrix-IsUsingHTTPS",
+						"value": "No",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": []
+				},
+				"url": {
+					"raw": "{{BaseUrl}}/Authentication/GetUserName",
+					"host": [
+						"{{BaseUrl}}"
+					],
+					"path": [
+						"Authentication",
+						"GetUserName"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "WebProxy: Launch (file fetch ticket)",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"X-Citrix-Application\", function () {\r",
+							"    pm.response.to.have.header(\"X-Citrix-Application\");\r",
+							"});\r",
+							"\r",
+							"let payload = pm.response.json();\r",
+							"\r",
+							"pm.test(\"File fetch status success\", function () {\r",
+							"    pm.expect(payload.status).is.equal('success');\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Server protocol version correct\", function () {\r",
+							"    pm.expect(payload.serverProtocolVersion).is.equal('1');\r",
+							"});\r",
+							"\r",
+							"pm.environment.set('DesktopFileFetchTicket', payload.fileFetchTicket);\r",
+							"pm.environment.set('DesktopFileFetchUrl', payload.fileFetchUrl);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "ASP.NET_SessionId={{ASP.NET_SessionId}}; CsrfToken={{CsrfToken}}; CtxsClientDetectionDone=true; CtxsIsPassThrough=false; CtxsClientVersion=23.2.0.38; CtxsHasUpgradeBeenShown=true;",
+						"type": "text"
+					},
+					{
+						"key": "Csrf-Token",
+						"value": "{{CsrfToken}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Citrix-IsUsingHTTPS",
+						"value": "No",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "displayNameDesktopTitle",
+							"value": "{{DesktopDisplayName}}",
+							"type": "text"
+						},
+						{
+							"key": "createFileFetchTicket",
+							"value": "true",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{BaseUrl}}{{DesktopLaunchStatus}}",
+					"host": [
+						"{{BaseUrl}}{{DesktopLaunchStatus}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "WebProxy: Get Ica File",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "ASP.NET_SessionId={{ASP.NET_SessionId}}; CsrfToken={{CsrfToken}}; CtxsClientDetectionDone=true; CtxsIsPassThrough=false; CtxsClientVersion=23.2.0.38; CtxsHasUpgradeBeenShown=true;",
+						"type": "text"
+					},
+					{
+						"key": "Csrf-Token",
+						"value": "{{CsrfToken}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Citrix-IsUsingHTTPS",
+						"value": "No",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "ticket",
+							"value": "{{DesktopFileFetchTicket}}",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{DesktopFileFetchUrl}}?ticket={{DesktopFileFetchTicket}}",
+					"host": [
+						"{{DesktopFileFetchUrl}}"
+					],
+					"query": [
+						{
+							"key": "ticket",
+							"value": "{{DesktopFileFetchTicket}}"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "BaseUrl",
+			"value": "http://stftest1.storefront-dev.local/Citrix/Receiver/",
+			"type": "string"
+		},
+		{
+			"key": "ASP.NET_SessionId",
+			"value": ""
+		},
+		{
+			"key": "CsrfToken",
+			"value": ""
+		},
+		{
+			"key": "CDT",
+			"value": ""
+		},
+		{
+			"key": "CDTPostback",
+			"value": ""
+		},
+		{
+			"key": "DesktopDisplayName",
+			"value": "Desktop"
+		},
+		{
+			"key": "DesktopLaunchStatus",
+			"value": ""
+		},
+		{
+			"key": "DesktopFileFetchTicket",
+			"value": ""
+		},
+		{
+			"key": "DesktopFileFetchUrl",
+			"value": ""
+		},
+		{
+			"key": "Domain",
+			"value": "STOREFRONT-DEV"
+		},
+		{
+			"key": "SubscriptionUrl",
+			"value": ""
+		}
+	]
+}
