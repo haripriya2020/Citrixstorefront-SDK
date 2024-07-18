@@ -1,0 +1,83 @@
+$sfurl = "https://xd1.citrix.lab/Citrix/StoreWeb/"   # Replace with the actual URL
+$appname = "calculator"         # Replace with the actual application name
+$icapath = "C:\Users\demoadmin\Music"   # Replace with the actual ICA file path
+$username = "demoadmin"       # Replace with the actual username
+$password = "fbEe5A0SawDM"       # Replace with the actual password
+$domain = "citrix.lab"           # Replace with the actual domain
+
+# Start by loading main SF page
+$headers = @{
+    "Accept" = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8';
+    "Upgrade-Insecure-Requests" = "1";
+}
+
+try {
+    Invoke-WebRequest -Uri $sfurl -Method GET -Headers $headers -SessionVariable SFSession -UseBasicParsing | Out-Null
+    Write-Output "Loaded main SF page successfully."
+} catch {
+    Write-Error "Failed to load the main SF page: $_"
+    exit
+}
+
+# Gets required tokens
+$headers = @{
+    "Accept" = 'application/xml, text/xml, */*; q=0.01';
+    "Content-Length" = "0";
+    "X-Requested-With" = "XMLHttpRequest";
+    "X-Citrix-IsUsingHTTPS" = "Yes";
+    "Referer" = "https://xd1.citrix.lab/Citrix/StoreWeb/Services/Authentication/GetAuthTokens/";
+}
+
+try {
+    $response = Invoke-WebRequest -Uri "$sfurl/Services/Authentication/GetAuthTokens" -Method POST -Headers $headers -WebSession $SFSession -UseBasicParsing
+    $authToken = ($response.Content | ConvertFrom-Json).tokens | Where-Object { $_.name -eq 'AuthToken' }
+    Write-Output "Retrieved authentication tokens successfully."
+} catch {
+    Write-Error "Failed to retrieve authentication tokens: $_"
+    exit
+}
+
+# Prepare login payload
+$loginPayload = @{
+    username = $username;
+    password = $password;
+    domain = $domain;
+}
+
+# Convert payload to JSON
+$loginPayloadJson = $loginPayload | ConvertTo-Json
+
+# Login to the application
+$headers = @{
+    "Accept" = 'application/json, text/plain, */*';
+    "Content-Type" = "application/json";
+    "X-Citrix-AuthToken" = $authToken.value;
+    "Referer" = $sfurl;
+}
+
+try {
+    $loginResponse = Invoke-WebRequest -Uri "$sfurl/Services/Authentication/Login" -Method POST -Headers $headers -Body $loginPayloadJson -WebSession $SFSession -UseBasicParsing
+    if ($loginResponse.StatusCode -eq 200) {
+        Write-Output "Login successful."
+    } else {
+        Write-Error "Login failed with status code: $($loginResponse.StatusCode)"
+        exit
+    }
+} catch {
+    Write-Error "Login failed: $_"
+    exit
+}
+
+# Access the application
+$appUrl = "$sfurl/Resources/Launch/LaunchApplication?name=$appname&icaPath=$icapath"
+try {
+    $appResponse = Invoke-WebRequest -Uri $appUrl -Method GET -WebSession $SFSession
+    if ($appResponse.StatusCode -eq 200) {
+        Write-Output "Application launch successful."
+        # Process the ICA file or other required steps
+    } else {
+        Write-Error "Failed to launch the application with status code: $($appResponse.StatusCode)"
+    }
+} catch {
+    Write-Error "Failed to launch the application: $_"
+}
